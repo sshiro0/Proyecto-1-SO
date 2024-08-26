@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <linux/limits.h>
 
 int main(int argc, char **argv) {
 
@@ -14,9 +15,17 @@ int main(int argc, char **argv) {
     pid_t c_pid;                // ID del hijo
     int status;                 // status del hijo
     char **array;               // puntero al array que almacena el comando y argumentos
+    char cwd[PATH_MAX];
 
     while (1) {
-        fputs("\033[1;32mUDECshell$ \033[0m", stdout);          // prompt verde brillante "UDECshell"
+
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            printf("\033[1;32mPROJECTshell\033[0m:\033[1;34m~%s\033[0m$ ", cwd);
+        }
+        else {
+            perror("Error in obtain the directory.");
+            exit(1);
+        }
 
         bufferRead = getline(&buffer, &bufferSize, stdin);      // almacena bufferSize y lee buffer
         if (bufferRead == -1) {                                 
@@ -49,7 +58,6 @@ int main(int argc, char **argv) {
         c_pid = fork();                                 // creación proceso hijo
         if (c_pid == -1) {
             perror("Failed to create the child.");
-            free(buffer);
             free(array);
             exit(1);
         }
@@ -57,7 +65,6 @@ int main(int argc, char **argv) {
         if (c_pid == 0) {
             if (execvp(array[0], array) == -1) {
                 perror("Failed to execute");
-                free(buffer);
                 free(array);
                 exit(1);
             }
