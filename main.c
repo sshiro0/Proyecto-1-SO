@@ -6,6 +6,39 @@
 #include <string.h>
 #include <linux/limits.h>
 
+#define clear() printf("\033[H\033[J")
+
+void welcome() {
+    clear();
+    printf("\n\n");
+    printf("                               ██     ██ ███████ ██       ██████  ██████  ███    ███ ███████ ██ \n");
+    printf("                               ██     ██ ██      ██      ██      ██    ██ ████  ████ ██      ██ \n");
+    printf("                               ██  █  ██ █████   ██      ██      ██    ██ ██ ████ ██ █████   ██ \n");
+    printf("                               ██ ███ ██ ██      ██      ██      ██    ██ ██  ██  ██ ██         \n");
+    printf("                                ███ ███  ███████ ███████  ██████  ██████  ██      ██ ███████ ██ \n");
+    char* username = getenv("USER");
+    printf("\nUSER: @%s\n\n", username);
+
+}
+
+
+void printDirectory() {
+
+    char cwd[PATH_MAX];
+    
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("\033[1;32mPROJECTshell\033[0m:\033[1;34m~%s\033[0m$ ", cwd);
+    }
+    else {
+        perror("Error getting the current working directory.");
+        exit(1);
+    }
+}
+
+
+
+
+
 int main(int argc, char **argv) {
 
     (void)argc, (void)argv;     // void para evitar problemas al compilar
@@ -15,21 +48,16 @@ int main(int argc, char **argv) {
     pid_t c_pid;                // ID del hijo
     int status;                 // status del hijo
     char **array;               // puntero al array que almacena el comando y argumentos
-    char cwd[PATH_MAX];
+
+    welcome();
 
     while (1) {
 
-        if (getcwd(cwd, sizeof(cwd)) != NULL) {
-            printf("\033[1;32mPROJECTshell\033[0m:\033[1;34m~%s\033[0m$ ", cwd);
-        }
-        else {
-            perror("Error in obtain the directory.");
-            exit(1);
-        }
+        printDirectory();
 
         bufferRead = getline(&buffer, &bufferSize, stdin);      // almacena bufferSize y lee buffer
         if (bufferRead == -1) {                                 
-            perror("Error in reading. Exiting shell.");
+            perror("Error reading. Exiting shell.");
             free(buffer);
             exit(1);
         }
@@ -54,8 +82,27 @@ int main(int argc, char **argv) {
             free(array);
             continue;
         }
+    
+        if (strcmp(array[0], "cd") == 0) {
+            if (array[1] == NULL) {
+                fprintf(stderr, "Error finding the directory.\n");
+            }
+            else {
+                if (chdir(array[1]) != 0) {
+                    perror("Error in cd command");
+                }
+            }
+            free(array);
+            continue;                                   // Skipeafork() si el comando es cd
+        }
 
-        c_pid = fork();                                 // creación proceso hijo
+        if (strcmp(array[0], "exit") == 0) {
+            exit(1);
+        }
+
+
+        // Proceso Hijo
+        c_pid = fork();
         if (c_pid == -1) {
             perror("Failed to create the child.");
             free(array);
