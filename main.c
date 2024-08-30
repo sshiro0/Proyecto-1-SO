@@ -37,8 +37,6 @@ void printDirectory() {
 
 
 
-
-
 int main(int argc, char **argv) {
 
     (void)argc, (void)argv;     // void para evitar problemas al compilar
@@ -83,6 +81,13 @@ int main(int argc, char **argv) {
             continue;
         }
     
+        if(array[1] != NULL){
+            int p[2];
+            pipe(p); 
+
+            execvp(array[0], array);
+        }
+
         if (strcmp(array[0], "cd") == 0) {
             if (array[1] == NULL) {
                 fprintf(stderr, "Error finding the directory.\n");
@@ -99,6 +104,7 @@ int main(int argc, char **argv) {
         if (strcmp(array[0], "exit") == 0) {
             exit(1);
         }
+
 
 
         // Proceso Hijo
