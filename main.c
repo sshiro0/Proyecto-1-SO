@@ -36,6 +36,24 @@ void printDirectory() {
 }
 
 
+void pipeProcesses(char **array){
+    int p[2];
+    pipe(p); // crea pipe (valores de descrp a partir de 3 dado 0 es entrada estandar, 1 salida, 2 error
+
+    if (fork() == 0) {
+    // hijo 
+        close(0); // no lee  
+        close(p[1]); // cierra escritura
+        dup(p[0]); // copia descriptor para lectura a p[0].
+	execvp(array[0],array);
+    } else {
+        close(1); // no escribe 
+        close(p[0]); // cierra lectura 
+        dup(p[1]); // copia descr para escritura.
+	execvp(array[0],array);
+    }
+}
+
 
 int main(int argc, char **argv) {
 
@@ -73,7 +91,18 @@ int main(int argc, char **argv) {
             array[i++] = token;
             token = strtok(NULL, " \n");
         }
-        array[i] = NULL;                
+        array[i] = NULL;   
+
+        for(int i = 0; i < sizeof(array); i++){
+            if(array[i] == "NULL" && i-1 != sizeof(array)){
+                pipeProcesses(array);
+                break;
+            }
+            else{
+                continue;
+            }
+
+        }             
 
         if (array[0] == NULL) {                         // caso no se ingresa nada, se pide algo
             printf("Please, enter a command.");
@@ -81,13 +110,7 @@ int main(int argc, char **argv) {
             continue;
         }
     
-        if(array[1] != NULL){
-            int p[2];
-            pipe(p); 
-
-            execvp(array[0], array);
-        }
-
+    
         if (strcmp(array[0], "cd") == 0) {
             if (array[1] == NULL) {
                 fprintf(stderr, "Error finding the directory.\n");
