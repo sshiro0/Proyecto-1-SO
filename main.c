@@ -20,6 +20,7 @@ void welcome() {
     printf("\nUSER: @%s\n\n", username);
 }
 
+
 void printDirectory() {
 
     char cwd[PATH_MAX];
@@ -42,18 +43,26 @@ int main(int argc, char **argv) {
     int status;                 // status del hijo
     char **array;               // puntero al array que almacena el comando y argumentos
     char **array2;
+    char *fullCommand;
+    
+    FILE *file = fopen("misfavoritos.txt", "a");
+    fclose(file);
 
     welcome();
 
     while (1) {
         printDirectory();
 
-        bufferRead = getline(&buffer, &bufferSize, stdin);      // almacena bufferSize y lee buffer
+        bufferRead = getline(&buffer, &bufferSize, stdin);// almacena bufferSize y lee buffer
+        fullCommand = strdup(buffer);
         if (bufferRead == -1) {                                 
             perror("Error reading. Exiting shell.");
             free(buffer);
+            free(fullCommand);
             exit(1);
         }
+        
+
 
         array = malloc(sizeof(char*) * 1024);           // asignación de memoria
         if (array == NULL) {                               
@@ -97,7 +106,45 @@ int main(int argc, char **argv) {
             printf("Please, enter a command.\n");
             free(array);
             free(array2);
+            free(fullCommand);
             continue;
+        }
+
+        if (strcmp(array[0], "favs") == 0){
+            // Mostrar los comandos favoritos
+            if (array[1] != NULL && strcmp(array[1], "mostrar") == 0){
+                FILE *file = fopen("misfavoritos.txt", "r");
+
+                char line[256]; 
+                
+                int counter = 1;
+                while (fgets(line, sizeof(line), file)){ 
+                    printf("%d) %s",counter ,line);
+                    counter++;
+                }
+
+                fclose(file);
+                continue;
+            }
+
+            else if (array[1] != NULL && strcmp(array[1], "buscar") == 0){
+                if (array[2] == NULL)
+                    perror("Error cmd null");
+
+                else{
+                    char line[256];
+                    int counter = 1;
+                    FILE *file = fopen("misfavoritos.txt", "r");
+                    while (fgets(line, sizeof(line), file)){ 
+                        if (strstr(line, array[2]) != NULL){
+                            printf("%d) %s",counter ,line);
+                        }
+                        counter++;
+                    }
+                    fclose(file);
+                    continue;
+                }
+            }
         }
         
         if (strcmp(array[0], "cd") == 0) {
@@ -169,6 +216,32 @@ int main(int argc, char **argv) {
                 }
             } else {
                 waitpid(c_pid, &status, 0);
+
+                // chequear que el comando no haya sido escrito antes
+
+                if (WIFEXITED(status)){
+                    int exit_status = WEXITSTATUS(status);
+                    char line[256];
+                    char write = 1;
+
+                    FILE *file = fopen("misfavoritos.txt", "r");
+                    while (fgets(line, sizeof(line), file)){ 
+                        if(strcmp(line, fullCommand) == 0){
+                            write = 0;
+                        }
+                    }
+
+                    fclose(file);
+
+                    if (write && strcmp(array[0], "favs") != 0) {
+                        // Escribir el comando en mis favoritos
+                        FILE *file = fopen("misfavoritos.txt", "a");
+                        fprintf(file, "%s", fullCommand);
+                        fclose(file);
+                    }
+
+                }    
+
             }
         }
         
