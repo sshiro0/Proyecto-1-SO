@@ -21,10 +21,13 @@ void welcome() {
 }
 
 void printDirectory() {
+
     char cwd[PATH_MAX];
+
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
         printf("\033[1;32mPROJECTshell\033[0m:\033[1;34m~%s\033[0m$ ", cwd);
-    } else {
+    } 
+    else {
         perror("Error getting the current working directory.");
         exit(1);
     }
