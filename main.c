@@ -98,7 +98,6 @@ int main(int argc, char **argv) {
 
         array[i] = NULL;   
         array2[j] = NULL;   
-        es_pipe = 0;
 
         for(i = 0; i < 12; i++){
             printf("%s ", array[i]);
@@ -111,12 +110,13 @@ int main(int argc, char **argv) {
             printf("%s ", array2[i]);
         }
 
+
         if (array[0] == NULL) {                         // caso no se ingresa nada, se pide algo
             printf("Please, enter a command.");
             free(array);
             continue;
         }
-    
+        
     
         if (strcmp(array[0], "cd") == 0) {
             if (array[1] == NULL) {
@@ -133,9 +133,10 @@ int main(int argc, char **argv) {
 
         if (strcmp(array[0], "exit") == 0) {
             exit(1);
-        }
-
-
+        }        
+        
+        int p[2];
+        pipe(p);
 
         // Proceso Hijo
         c_pid = fork();
@@ -146,6 +147,14 @@ int main(int argc, char **argv) {
         }
 
         if (c_pid == 0) {
+            if(es_pipe = 1){
+                close(0); // no lee  
+                close(p[1]); // cierra escritura
+                dup(p[0]); // copia descriptor para lectura a p[0].
+	            execvp(array2[0],array2);
+                es_pipe = 0;
+            }
+
             if (execvp(array[0], array) == -1) {
                 perror("Failed to execute");
                 free(array);
@@ -153,6 +162,11 @@ int main(int argc, char **argv) {
             }
         }
         else {
+            close(1); // no escribe 
+            close(p[0]); // cierra lectura 
+            dup(p[1]); // copia descr para escritura.
+	        execvp(array[0],array);
+            es_pipe = 0;
             wait(&status);
         }
 
