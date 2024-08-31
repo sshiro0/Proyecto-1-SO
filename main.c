@@ -36,25 +36,6 @@ void printDirectory() {
 }
 
 
-void pipeProcesses(char **array){
-    int p[2];
-    pipe(p); // crea pipe (valores de descrp a partir de 3 dado 0 es entrada estandar, 1 salida, 2 error
-
-    if (fork() == 0) {
-    // hijo 
-        close(0); // no lee  
-        close(p[1]); // cierra escritura
-        dup(p[0]); // copia descriptor para lectura a p[0].
-	execvp(array[0],array);
-    } else {
-        close(1); // no escribe 
-        close(p[0]); // cierra lectura 
-        dup(p[1]); // copia descr para escritura.
-	execvp(array[0],array);
-    }
-}
-
-
 int main(int argc, char **argv) {
 
     (void)argc, (void)argv;     // void para evitar problemas al compilar
@@ -64,6 +45,8 @@ int main(int argc, char **argv) {
     pid_t c_pid;                // ID del hijo
     int status;                 // status del hijo
     char **array;               // puntero al array que almacena el comando y argumentos
+    char **array2;
+
 
     welcome();
 
@@ -85,24 +68,48 @@ int main(int argc, char **argv) {
             exit(1);
         }
 
-        int i = 0;
-        char *token = strtok(buffer, " \n");            // divide string buffer en tokens, usa " " como delimitador y \n
-        while (token) {
-            array[i++] = token;
-            token = strtok(NULL, " \n");
+        array2 = malloc(sizeof(char*) * 1024);           // asignación de memoria
+        if (array2 == NULL) {                               
+            perror("Malloc error. Exiting shell.");
+            free(buffer);
+            exit(1);
         }
-        array[i] = NULL;   
 
-        for(int i = 0; i < sizeof(array); i++){
-            if(array[i] == "NULL" && i-1 != sizeof(array)){
-                pipeProcesses(array);
-                break;
+        int i = 0;
+        int j = 0;
+        int es_pipe = 0;
+
+        char *token = strtok(buffer, " \n");            // divide string buffer en tokens, usa " " como delimitador y \n
+        while (token) { 
+            if(es_pipe == 0 && strcmp(token, "|") == 0){
+                array[i++] = NULL;
+                token = strtok(NULL, " \n");
+                es_pipe = 1;
+            }
+            else if(es_pipe == 1){
+                array2[j++] = token;
+                token = strtok(NULL, " \n");
             }
             else{
-                continue;
+                array[i++] = token;
+                token = strtok(NULL, " \n");
             }
+        }
 
-        }             
+        array[i] = NULL;   
+        array2[j] = NULL;   
+        es_pipe = 0;
+
+        for(i = 0; i < 12; i++){
+            printf("%s ", array[i]);
+        }
+        printf("\n");
+        printf("\n");
+        printf("\n");
+
+        for(i = 0; i < 12; i++){
+            printf("%s ", array2[i]);
+        }
 
         if (array[0] == NULL) {                         // caso no se ingresa nada, se pide algo
             printf("Please, enter a command.");
