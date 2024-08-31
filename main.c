@@ -18,26 +18,19 @@ void welcome() {
     printf("                                ███ ███  ███████ ███████  ██████  ██████  ██      ██ ███████ ██ \n");
     char* username = getenv("USER");
     printf("\nUSER: @%s\n\n", username);
-
 }
 
-
 void printDirectory() {
-
     char cwd[PATH_MAX];
-    
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
         printf("\033[1;32mPROJECTshell\033[0m:\033[1;34m~%s\033[0m$ ", cwd);
-    }
-    else {
+    } else {
         perror("Error getting the current working directory.");
         exit(1);
     }
 }
 
-
 int main(int argc, char **argv) {
-
     (void)argc, (void)argv;     // void para evitar problemas al compilar
     char *buffer = NULL;        // puntero al string del usuario
     size_t bufferSize = 0;      // size para asignar espacio en memoria de buffer
@@ -47,11 +40,9 @@ int main(int argc, char **argv) {
     char **array;               // puntero al array que almacena el comando y argumentos
     char **array2;
 
-
     welcome();
 
     while (1) {
-
         printDirectory();
 
         bufferRead = getline(&buffer, &bufferSize, stdin);      // almacena bufferSize y lee buffer
@@ -81,98 +72,106 @@ int main(int argc, char **argv) {
 
         char *token = strtok(buffer, " \n");            // divide string buffer en tokens, usa " " como delimitador y \n
         while (token) { 
-            if(es_pipe == 0 && strcmp(token, "|") == 0){
-                array[i++] = NULL;
-                token = strtok(NULL, " \n");
+            if (strcmp(token, "|") == 0) {
+                array[i] = NULL;
                 es_pipe = 1;
+                token = strtok(NULL, " \n");
+                continue;
             }
-            else if(es_pipe == 1){
+
+            if (es_pipe) {
                 array2[j++] = token;
-                token = strtok(NULL, " \n");
-            }
-            else{
+            } else {
                 array[i++] = token;
-                token = strtok(NULL, " \n");
             }
+            token = strtok(NULL, " \n");
         }
 
         array[i] = NULL;   
         array2[j] = NULL;   
 
-        for(i = 0; i < 12; i++){
-            printf("%s ", array[i]);
-        }
-        printf("\n");
-        printf("\n");
-        printf("\n");
-
-        for(i = 0; i < 12; i++){
-            printf("%s ", array2[i]);
-        }
-
-
         if (array[0] == NULL) {                         // caso no se ingresa nada, se pide algo
-            printf("Please, enter a command.");
+            printf("Please, enter a command.\n");
             free(array);
+            free(array2);
             continue;
         }
         
-    
         if (strcmp(array[0], "cd") == 0) {
             if (array[1] == NULL) {
                 fprintf(stderr, "Error finding the directory.\n");
-            }
-            else {
+            } else {
                 if (chdir(array[1]) != 0) {
                     perror("Error in cd command");
                 }
             }
             free(array);
-            continue;                                   // Skipeafork() si el comando es cd
+            free(array2);
+            continue;                                   // Skip fork() si el comando es cd
         }
 
         if (strcmp(array[0], "exit") == 0) {
-            exit(1);
-        }        
-        
-        int p[2];
-        pipe(p);
-
-        // Proceso Hijo
-        c_pid = fork();
-        if (c_pid == -1) {
-            perror("Failed to create the child.");
             free(array);
-            exit(1);
+            free(array2);
+            exit(0);
         }
 
-        if (c_pid == 0) {
-            if(es_pipe = 1){
-                close(0); // no lee  
-                close(p[1]); // cierra escritura
-                dup(p[0]); // copia descriptor para lectura a p[0].
-	            execvp(array2[0],array2);
-                es_pipe = 0;
-            }
+        if (es_pipe) {
+            int p[2];
+            pipe(p);
 
-            if (execvp(array[0], array) == -1) {
-                perror("Failed to execute");
+            pid_t pid1 = fork();
+            if (pid1 == 0) {
+                // Hijo 1 (ejecuta el primer comando)
+                close(p[0]); // cierra lectura
+                dup2(p[1], STDOUT_FILENO); // redirige stdout
+                close(p[1]);
+                execvp(array[0], array);
+                perror("Failed to execute first command");
+                exit(1);
+            } else {
+                pid_t pid2 = fork();
+                if (pid2 == 0) {
+                    // Hijo 2 (ejecuta el segundo comando)
+                    close(p[1]); // cierra escritura
+                    dup2(p[0], STDIN_FILENO); // redirige stdin
+                    close(p[0]);
+                    execvp(array2[0], array2);
+                    perror("Failed to execute second command");
+                    exit(1);
+                } else {
+                    // Proceso padre
+                    close(p[0]);
+                    close(p[1]);
+                    waitpid(pid1, &status, 0);
+                    waitpid(pid2, &status, 0);
+                }
+            }
+        } else {
+            // Proceso sin pipes
+            c_pid = fork();
+            if (c_pid == -1) {
+                perror("Failed to create the child.");
                 free(array);
+                free(array2);
                 exit(1);
             }
-        }
-        else {
-            close(1); // no escribe 
-            close(p[0]); // cierra lectura 
-            dup(p[1]); // copia descr para escritura.
-	        execvp(array[0],array);
-            es_pipe = 0;
-            wait(&status);
-        }
 
+            if (c_pid == 0) {
+                if (execvp(array[0], array) == -1) {
+                    perror("Failed to execute");
+                    free(array);
+                    free(array2);
+                    exit(1);
+                }
+            } else {
+                waitpid(c_pid, &status, 0);
+            }
+        }
+        
         free(array);
+        free(array2);
     }
-    
     free(buffer);
     return 0;
 }
