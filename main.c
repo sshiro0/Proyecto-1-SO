@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <signal.h>
 #include <string.h>
 #include <linux/limits.h>
 
@@ -32,6 +34,14 @@ void printDirectory() {
         perror("Error getting the current working directory.");
         exit(1);
     }
+}
+
+//Sujeto a ser cambiado a un string dinamico
+char mensaje[256];
+void sig_handler(int sig) {
+    printf("\n%s\n", mensaje);
+    printDirectory();
+    exit(0);
 }
 
 int main(int argc, char **argv) {
@@ -108,6 +118,71 @@ int main(int argc, char **argv) {
             free(array2);
             free(fullCommand);
             continue;
+        }
+
+        //set recordatorio time "mensaje"
+        if(strcmp(array[0], "set") == 0){
+            if(array[1] == NULL){
+                printf("Error, se requieren mas argumentos.\n");
+            }
+            else if (strcmp(array[1], "recordatorio") == 0){
+                if(array[2] != NULL){
+                    char *str = array[2];
+                    int tiempo;
+                    int success = 0;
+                    for(int i = 0; str[i] != '\0'; i++){
+                        if(!isdigit(str[i])){
+                            printf("Error, se requiere caracter numerico.\n");
+                            success = 1;
+                            break;
+                        }
+                    }
+                    if(success == 0){
+                        tiempo = atoi(array[2]);
+                        if(array[3] != NULL){
+                            char *str1 = array[3];
+                            memset(mensaje, '\0', sizeof(str));
+                            for(int i = 0; str1[i] != '\0'; i++){
+                                if(str1[i] == '"' && i == 0){
+                                    continue;
+                                }
+                                else if(strlen(str1)-1 == i){
+                                    if(str1[i] == '"'){
+                                        mensaje[i-1] == '\0';
+                                        printf("Alarma '%s', sonara en %d seg.\n", mensaje, tiempo);
+                                        //Se crea un hijo para la estar esperando la alarma, el padre continua su respectivo proceso
+                                            if((fork())==0){
+                                                signal(SIGALRM, sig_handler);
+                                                alarm(tiempo);
+                                                while(1){
+                                                ;
+                                                }
+                                            }
+                                        break;
+                                    }
+                                    else {
+                                        printf("Error, no se escribio correctamente el mensaje.\n");
+                                        break;
+                                    }
+                                }
+                                else if(i > 0){
+                                    mensaje[i-1] = str1[i];
+                                }
+                                else {
+                                    printf("Error, escriba su mensaje entre comillas.\n");
+                                    break;
+                                }
+                            }
+                        }
+                        else{
+                            printf("Error se requiere un 'mensaje'.\n");
+                        }   
+                    }
+                }
+                else {
+                    printf("Error, se requiere un numero para el tiempo.\n");
+                }
+            }
         }
 
         if (strcmp(array[0], "favs") == 0){
