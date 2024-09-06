@@ -142,38 +142,30 @@ int main(int argc, char **argv) {
                     if(success == 0){
                         tiempo = atoi(array[2]);
                         if(array[3] != NULL){
-                            char *str1 = array[3];
-                            memset(mensaje, '\0', sizeof(str));
-                            for(int i = 0; str1[i] != '\0'; i++){
-                                if(str1[i] == '"' && i == 0){
-                                    continue;
+                            char str1[256]; 
+                            memset(mensaje, '\0', sizeof(mensaje));
+                            memset(str1, '\0', sizeof(str1));
+                            for(int j=0; array[j+3]!= NULL; j++){
+                                strcat(str1, array[j+3]);
+                                if(array[j+4] != NULL){
+                                    strcat(str1, " ");
                                 }
-                                else if(strlen(str1)-1 == i){
-                                    if(str1[i] == '"'){
-                                        mensaje[i-1] == '\0';
-                                        printf("Alarma '%s', sonara en %d seg.\n", mensaje, tiempo);
-                                        //Se crea un hijo para la estar esperando la alarma, el padre continua su respectivo proceso
-                                            if((fork())==0){
-                                                signal(SIGALRM, sig_handler);
-                                                alarm(tiempo);
-                                                while(1){
-                                                ;
-                                                }
-                                            }
-                                        break;
-                                    }
-                                    else {
-                                        printf("Error, no se escribio correctamente el mensaje.\n");
-                                        break;
+                            }
+                            if(str1[0] == '"' && str1[strlen(str1)-1] == '"'){
+                                strncpy(mensaje, str1+1, strlen(str1)-2);
+                                printf("Recordatorio '%s', para %d seg.\n", mensaje, tiempo);
+                                //Se crea un hijo para la estar esperando la alarma, el padre continua su respectivo proceso
+                                if((fork())==0){
+                                    signal(SIGALRM, sig_handler);
+                                    alarm(tiempo);
+                                    while(1){
+                                    ;
                                     }
                                 }
-                                else if(i > 0){
-                                    mensaje[i-1] = str1[i];
-                                }
-                                else {
-                                    printf("Error, escriba su mensaje entre comillas.\n");
-                                    break;
-                                }
+                            }
+                            else {
+                                printf("Error, no se escribio correctamente el mensaje.\n");
+                                memset(mensaje, '\0', sizeof(mensaje));
                             }
                         }
                         else{
