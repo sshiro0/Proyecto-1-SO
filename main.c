@@ -191,7 +191,7 @@ int main(int argc, char **argv) {
         if (strcmp(array[0], "favs") == 0){
             // Mostrar los comandos favoritos
             if (array[1] != NULL && strcmp(array[1], "mostrar") == 0){
-                FILE *file = fopen("misfavoritos.txt", "r");
+                FILE *file = fopen("misfavoritostemp.txt", "r");
 
                 char line[256]; 
                 
@@ -257,6 +257,22 @@ int main(int argc, char **argv) {
 
                 continue;
             }
+
+            if (array[1] != NULL && strcmp(array[1], "cargar") == 0){
+                FILE *file = fopen("misfavoritos.txt", "r");
+
+                char line[256]; 
+                
+                int counter = 1;
+                while (fgets(line, sizeof(line), file)){ 
+                    printf("%d) %s",counter ,line);
+                    counter++;
+                }
+
+                fclose(file);
+                continue;
+            }
+
 
         }
         
