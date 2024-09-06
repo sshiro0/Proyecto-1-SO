@@ -7,7 +7,6 @@
 #include <signal.h>
 #include <string.h>
 #include <linux/limits.h>
-
 #define clear() printf("\033[H\033[J")
 
 void welcome() {
@@ -55,6 +54,9 @@ int main(int argc, char **argv) {
     char **array2;
     char *fullCommand;
     
+    FILE *fileTemp = fopen("misfavoritostemp.txt", "a");
+    fclose(fileTemp);
+
     FILE *file = fopen("misfavoritos.txt", "a");
     fclose(file);
 
@@ -183,6 +185,7 @@ int main(int argc, char **argv) {
                     printf("Error, se requiere un numero para el tiempo.\n");
                 }
             }
+            continue;
         }
 
         if (strcmp(array[0], "favs") == 0){
@@ -209,7 +212,7 @@ int main(int argc, char **argv) {
                 else{
                     char line[256];
                     int counter = 1;
-                    FILE *file = fopen("misfavoritos.txt", "r");
+                    FILE *file= fopen("misfavoritos.txt", "r");
                     while (fgets(line, sizeof(line), file)){ 
                         if (strstr(line, array[2]) != NULL){
                             printf("%d) %s",counter ,line);
@@ -220,6 +223,41 @@ int main(int argc, char **argv) {
                     continue;
                 }
             }
+
+            else if (array[1] != NULL && strcmp(array[1], "guardar") == 0){
+                FILE *file = fopen("misfavoritos.txt", "a+");
+                FILE *fileTemp = fopen("misfavoritostemp.txt", "r");
+                char line[256];
+                char line2[256];
+                int write = 1;
+                int counter = 0;
+
+                while (fgets(line, sizeof(line), fileTemp)){
+                    while(fgets(line2, sizeof(line2), file)){
+                        if (strcmp(line2, line) == 0){
+                            write = 0;
+                            
+                        }
+                        
+                    }
+
+                    fclose(file);
+                    FILE *file = fopen("misfavoritos.txt", "a+");
+                    
+                    if (write == 1)
+                        fprintf(file, "%s", line);
+                    
+    
+            
+                    write = 1;
+                    counter++;
+                }
+                fclose(file);
+                fclose(fileTemp);
+
+                continue;
+            }
+
         }
         
         if (strcmp(array[0], "cd") == 0) {
@@ -236,8 +274,12 @@ int main(int argc, char **argv) {
         }
 
         if (strcmp(array[0], "exit") == 0) {
+            FILE* fileTemp = fopen("misfavoritostemp.txt", "w"); 
+            fclose(fileTemp);
+
             free(array);
             free(array2);
+
             exit(0);
         }
 
@@ -299,20 +341,20 @@ int main(int argc, char **argv) {
                     char line[256];
                     char write = 1;
 
-                    FILE *file = fopen("misfavoritos.txt", "r");
-                    while (fgets(line, sizeof(line), file)){ 
+                    FILE *fileTemp = fopen("misfavoritostemp.txt", "r");
+                    while (fgets(line, sizeof(line), fileTemp)){ 
                         if(strcmp(line, fullCommand) == 0){
                             write = 0;
                         }
                     }
 
-                    fclose(file);
+                    fclose(fileTemp);
 
                     if (write && strcmp(array[0], "favs") != 0) {
                         // Escribir el comando en mis favoritos
-                        FILE *file = fopen("misfavoritos.txt", "a");
-                        fprintf(file, "%s", fullCommand);
-                        fclose(file);
+                        FILE *fileTemp = fopen("misfavoritostemp.txt", "a");
+                        fprintf(fileTemp, "%s", fullCommand);
+                        fclose(fileTemp);
                     }
 
                 }    
