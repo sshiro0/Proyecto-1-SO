@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
                                     strcat(str1, " ");
                                 }
                             }
-                            if(str1[0] == '"' && str1[strlen(str1)-1] == '"'){
+                            if(str1[0] == '"' && str1[strlen(str1)-1] == '"' && strlen(str1) > 2){
                                 strncpy(mensaje, str1+1, strlen(str1)-2);
                                 printf("Recordatorio '%s', para %d seg.\n", mensaje, tiempo);
                                 //Se crea un hijo para la estar esperando la alarma, el padre continua su respectivo proceso
@@ -176,6 +176,9 @@ int main(int argc, char **argv) {
                 else {
                     printf("Error, se requiere un numero para el tiempo.\n");
                 }
+            }
+            else{
+                printf("Error, argumento no reconocido.\n");
             }
             continue;
         }
