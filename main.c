@@ -139,6 +139,7 @@ int main(int argc, char **argv) {
                             break;
                         }
                     }
+
                     if(success == 0){
                         tiempo = atoi(array[2]);
                         if(array[3] != NULL){
@@ -151,6 +152,7 @@ int main(int argc, char **argv) {
                                     strcat(str1, " ");
                                 }
                             }
+
                             if(str1[0] == '"' && str1[strlen(str1)-1] == '"' && strlen(str1) > 2){
                                 strncpy(mensaje, str1+1, strlen(str1)-2);
                                 printf("Recordatorio '%s', para %d seg.\n", mensaje, tiempo);
@@ -163,16 +165,19 @@ int main(int argc, char **argv) {
                                     }
                                 }
                             }
+
                             else {
                                 printf("Error, no se escribio correctamente el mensaje.\n");
                                 memset(mensaje, '\0', sizeof(mensaje));
                             }
                         }
+
                         else{
                             printf("Error se requiere un 'mensaje'.\n");
                         }   
                     }
                 }
+
                 else {
                     printf("Error, se requiere un numero para el tiempo.\n");
                 }
@@ -262,19 +267,76 @@ int main(int argc, char **argv) {
                 while (fgets(line, sizeof(line), file)){ 
                     printf("%d) %s",counter ,line);
                     counter++;
-                }
+                } 
 
                 fclose(file);
                 continue;
             }
 
+            else if (array[1] != NULL && strcmp(array[1], "borrar") == 0){
+                FILE *file = fopen("misfavoritos.txt", "w");
+                fclose(file);
+                continue;
+            }
 
+            else if (array[1] != NULL && strcmp(array[1], "ejecutar") == 0){
+                if (array[2] == NULL)
+                    perror("Error, third argument needed");
+ 
+                else{
+                    char** arrayExec;
+                    char line[256];
+
+                    arrayExec = malloc(sizeof(char*) * 1024);   
+                
+
+                    int i = 0;
+                    int counter = 1;
+
+                    FILE* file = fopen("misfavoritos.txt", "r");
+                    while(fgets(line, sizeof(line), file)){
+                        if (atoi(array[2]) == counter){
+                            char *token = strtok(line, " \n");  
+                              
+                            while (token) { 
+                                arrayExec[i++] = token;
+                                token = strtok(NULL, " \n");
+                            }
+
+                            arrayExec[i] = NULL;   
+
+                            c_pid = fork();
+                            if (c_pid == 0) {
+                                if (execvp(arrayExec[0], arrayExec) == -1) {
+                                    perror("Failed toa execute");
+                                    free(arrayExec);
+                                    exit(1);
+                                }
+                                else {
+                                    waitpid(c_pid, &status, 0);
+                                    continue;
+                                }
+
+                           } 
+                        
+                            
+                        }
+
+                        counter++;
+                    }
+
+                    fclose(file);
+                    continue;
+                    
+                }
+            }
         }
         
         if (strcmp(array[0], "cd") == 0) {
             if (array[1] == NULL) {
                 fprintf(stderr, "Error finding the directory.\n");
-            } else {
+            } 
+            else {
                 if (chdir(array[1]) != 0) {
                     perror("Error in cd command");
                 }
@@ -325,7 +387,8 @@ int main(int argc, char **argv) {
                     waitpid(pid2, &status, 0);
                 }
             }
-        } else {
+        }
+        else {
             // Proceso sin pipes
             c_pid = fork();
             if (c_pid == -1) {
@@ -334,7 +397,7 @@ int main(int argc, char **argv) {
                 free(array2);
                 exit(1);
             }
-
+            c_pid = fork();
             if (c_pid == 0) {
                 if (execvp(array[0], array) == -1) {
                     perror("Failed to execute");
