@@ -333,9 +333,17 @@ int main(int argc, char **argv) {
         }
         
         if (strcmp(array[0], "cd") == 0) {
-            if (array[1] == NULL) {
-                fprintf(stderr, "Error finding the directory.\n");
-            } 
+            if (array[1] == NULL || strcmp(array[1], "~") == 0) {
+                const char *home = getenv("HOME");
+                if (home == NULL) {
+                    fprintf(stderr, "Error: HOME not found.\n");
+                }
+                else {
+                    if (chdir(home) != 0) {
+                        perror("Error in cd command.");
+                    }
+                }
+            }
             else {
                 if (chdir(array[1]) != 0) {
                     perror("Error in cd command");
@@ -343,7 +351,7 @@ int main(int argc, char **argv) {
             }
             free(array);
             free(array2);
-            continue;                                   // Skip fork() si el comando es cd
+            continue; // Skip fork() si el comando es cd
         }
 
         if (strcmp(array[0], "exit") == 0) {
