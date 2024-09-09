@@ -101,6 +101,15 @@ void executePipes(char *commands[]) {
     }
 }
 
+void signal_handler(int signal) {
+    FILE *fileTemp = fopen("misfavoritostemp.txt", "w");
+    if (fileTemp != NULL) {
+        fclose(fileTemp);
+    }
+    printf("\n");
+    exit(0);
+}
+
 // Sujeto a ser cambiado a un string dinámico
 char mensaje[256];
 void sig_handler(int sig) {
@@ -125,6 +134,9 @@ int main(int argc, char **argv) {
     FILE *file = fopen("misfavoritos.txt", "a");
     fclose(file);
 
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+
     welcome(); // mensaje de bienvenida
 
     while (1) {
@@ -140,6 +152,9 @@ int main(int argc, char **argv) {
             free(fullCommand);
             exit(1);
         }
+
+        char *fullCommandOriginal = strdup(fullCommand);
+
         // Asignación de memoria para los arrays de comandos y argumentos
         array = malloc(sizeof(char*) * 1024);
         if (array == NULL) {
@@ -496,7 +511,6 @@ int main(int argc, char **argv) {
             }
             else {
                 waitpid(c_pid, &status, 0);
-
                 if (WIFEXITED(status)) {
                     int exit_status = WEXITSTATUS(status);
                     if (exit_status == 0) {
@@ -507,18 +521,25 @@ int main(int argc, char **argv) {
         }
 
         if (command_executed){
-            if (strstr(fullCommand, "favs") == NULL){
+            if (strstr(fullCommandOriginal, "favs") == NULL){
                 char line[256];
                 char write = 1;
 
                 FILE *fileTemp = fopen("misfavoritostemp.txt", "r");
                 while (fgets(line, sizeof(line), fileTemp)){ 
-                    if(strcmp(line, fullCommand) == 0){
+                    if(strcmp(line, fullCommandCopy) == 0){
                         write = 0;
                         break;
                     }
                 }
                 fclose(fileTemp);
+
+                if (write && strcmp(array[0], "favs") != 0) {
+                    // Escribir el comando en mis favoritos
+                    FILE *fileTemp = fopen("misfavoritostemp.txt", "a");
+                    fprintf(fileTemp, "%s", fullCommandCopy);
+                    fclose(fileTemp);
+                }
             }
         }
         free(array);
