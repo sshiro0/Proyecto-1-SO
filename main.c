@@ -279,16 +279,15 @@ int main(int argc, char **argv) {
                 else{
                     char** arrayExec;
                     char line[256];
-
                     arrayExec = malloc(sizeof(char*) * 1024);   
-                
-
                     int i = 0;
                     int counter = 1;
 
                     FILE* file = fopen("misfavoritos.txt", "r");
+
                     while(fgets(line, sizeof(line), file)){
                         if (atoi(array[2]) == counter){
+                            
                             char *token = strtok(line, " \n");  
                               
                             while (token) { 
@@ -296,31 +295,16 @@ int main(int argc, char **argv) {
                                 token = strtok(NULL, " \n");
                             }
 
-                            arrayExec[i] = NULL;   
-
-                            c_pid = fork();
-                            if (c_pid == 0) {
-                                if (execvp(arrayExec[0], arrayExec) == -1) {
-                                    perror("Failed toa execute");
-                                    free(arrayExec);
-                                    exit(1);
-                                }
-                                else {
-                                    waitpid(c_pid, &status, 0);
-                                    continue;
-                                }
-
-                           } 
-                        
+                            arrayExec[i] = NULL; 
                             
-                        }
+                            free(array);
+                            array = arrayExec;
 
+                            break;
+                        }
                         counter++;
                     }
-
                     fclose(file);
-                    continue;
-                    
                 }
             }
         }
@@ -399,6 +383,7 @@ int main(int argc, char **argv) {
                 exit(1);
             }
             
+
             if (c_pid == 0) {
                 if (execvp(array[0], array) == -1) {
                     perror("Failed to execute");
