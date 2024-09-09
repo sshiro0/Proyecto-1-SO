@@ -287,6 +287,93 @@ int main(int argc, char **argv) {
                     fclose(file);
                 }
             }
+            else if (array[1] != NULL && strcmp(array[1], "eliminar") == 0) {
+                if (array[2] == NULL) {
+                    perror("Error, third argument needed");
+                }
+                else {
+                    FILE *file = fopen("misfavoritos.txt", "r");
+                    if (file == NULL) {
+                        perror("Error opening file.");
+                        continue;
+                    }
+                    int rango = 0;
+                    char line[256];
+
+                    while (fgets(line, sizeof(line), file)) {
+                        rango++;
+                    }
+                    fclose(file);
+
+                    int deleteCMD[1024];  // array que contiene los números de las líneas a borrar
+                    int deleteCantidad = 0;  // cantidad de líneas a borrar
+                    int valid = 1;  // para saber si el numero ingresado corresponde a una linea
+                    
+                    for (int j = 2; array[j] != NULL; j++) {
+                        char *arg = array[j];
+
+                        // verificacion de que se ingrese un numero
+                        for (int k = 0; arg[k] != '\0'; k++) {
+                            if (!isdigit(arg[k])) {
+                                printf("Error: Please enter a valid number.\n");
+                                valid = 0;
+                                break;
+                            }
+                        }
+
+                        if (!valid) {
+                            break;
+                        }
+
+                        // verificar que el numero corresponde a una linea
+                        int lineNum = atoi(arg);
+                        if (lineNum <= 0 || lineNum > rango) {
+                            printf("Error: Please enter a valid index.\n");
+                            valid = 0;
+                            break;
+                        }
+
+                        // si pasa la verificacion se almacena en lineas a borrar
+                        deleteCMD[deleteCantidad++] = lineNum;
+                    }
+
+                    if (valid) {
+                        FILE *file = fopen("misfavoritos.txt", "r");
+                        FILE *fileCopy = fopen("copy.txt", "w");
+                        if (file == NULL || fileCopy == NULL) {
+                            perror("Error opening file.\n");
+                        }
+                        int counter = 1;
+                        int deleteable = 0;
+
+                        while (fgets(line, sizeof(line), file)) {
+                            deleteable = 0;
+
+                            for (int i = 0; i < deleteCantidad; i++) {
+                                if (deleteCMD[i] == counter) {
+                                    deleteable = 1;
+                                    break;
+                                }
+                            }
+
+                            if (!deleteable) {
+                                fputs(line, fileCopy);
+                            }
+                            counter++;
+                        }
+
+                        fclose(file);
+                        fclose(fileCopy);
+
+                        // eliminamos el archivo original y lo reemplazamos con el nuevo
+                        remove("misfavoritos.txt");
+                        rename("copy.txt", "misfavoritos.txt");
+
+                        continue;
+                    }                                        
+                }
+                continue;
+            }
         }
 
         // Manejando recordatorio
