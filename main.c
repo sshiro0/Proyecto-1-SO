@@ -140,7 +140,6 @@ int main(int argc, char **argv) {
             free(fullCommand);
             exit(1);
         }
-
         // Asignación de memoria para los arrays de comandos y argumentos
         array = malloc(sizeof(char*) * 1024);
         if (array == NULL) {
@@ -177,62 +176,6 @@ int main(int argc, char **argv) {
             printf("Please, enter a command.\n");
             free(array);
             free(fullCommand);
-            continue;
-        }
-
-        // Manejando comandos favoritos
-        if (strcmp(array[0], "set") == 0) {
-            if (array[1] == NULL) {
-                printf("Error, se requieren más argumentos.\n");
-            } else if (strcmp(array[1], "recordatorio") == 0) {
-                if (array[2] != NULL) {
-                    char *str = array[2];
-                    int tiempo;
-                    int success = 0;
-                    for (int i = 0; str[i] != '\0'; i++) {
-                        if (!isdigit(str[i])) {
-                            printf("Error, se requiere caracter numérico.\n");
-                            success = 1;
-                            break;
-                        }
-                    }
-                    if (success == 0) {
-                        tiempo = atoi(array[2]);
-                        if (array[3] != NULL) {
-                            char str1[256]; 
-                            memset(mensaje, '\0', sizeof(mensaje));
-                            memset(str1, '\0', sizeof(str1));
-                            for (int j = 0; array[j + 3] != NULL; j++) {
-                                strcat(str1, array[j + 3]);
-                                if (array[j + 4] != NULL) {
-                                    strcat(str1, " ");
-                                }
-                            }
-                            if (str1[0] == '"' && str1[strlen(str1) - 1] == '"' && strlen(str1) > 2) {
-                                strncpy(mensaje, str1 + 1, strlen(str1) - 2);
-                                printf("Recordatorio '%s', para %d seg.\n", mensaje, tiempo);
-                                // Se crea un hijo para esperar la alarma, el padre continúa su respectivo proceso
-                                if ((fork()) == 0) {
-                                    signal(SIGALRM, sig_handler);
-                                    alarm(tiempo);
-                                    while (1) {
-                                        ;
-                                    }
-                                }
-                            } else {
-                                printf("Error, no se escribió correctamente el mensaje.\n");
-                                memset(mensaje, '\0', sizeof(mensaje));
-                            }
-                        } else {
-                            printf("Error, se requiere un 'mensaje'.\n");
-                        }
-                    }
-                } else {
-                    printf("Error, se requiere un número para el tiempo.\n");
-                }
-            } else {
-                printf("Error, argumento no reconocido.\n");
-            }
             continue;
         }
 
@@ -288,7 +231,8 @@ int main(int argc, char **argv) {
                 fclose(file);
                 fclose(fileTemp);
                 continue;
-            } else if (array[1] != NULL && strcmp(array[1], "cargar") == 0) {
+            } 
+            else if (array[1] != NULL && strcmp(array[1], "cargar") == 0) {
                 FILE *file = fopen("misfavoritos.txt", "r");
                 char line[256]; 
                 int counter = 1;
@@ -298,14 +242,17 @@ int main(int argc, char **argv) {
                 } 
                 fclose(file);
                 continue;
-            } else if (array[1] != NULL && strcmp(array[1], "borrar") == 0) {
+            } 
+            else if (array[1] != NULL && strcmp(array[1], "borrar") == 0) {
                 FILE *file = fopen("misfavoritos.txt", "w");
                 fclose(file);
                 continue;
-            } else if (array[1] != NULL && strcmp(array[1], "ejecutar") == 0) {
+            } 
+            else if (array[1] != NULL && strcmp(array[1], "ejecutar") == 0) {
                 if (array[2] == NULL) {
                     perror("Error, third argument needed");
-                } else {
+                } 
+                else {
                     char **arrayExec;
                     char line[256];
                     arrayExec = malloc(sizeof(char*) * 1024);   
@@ -327,10 +274,68 @@ int main(int argc, char **argv) {
                             break;
                         }
                         counter++;
+                        
                     }
                     fclose(file);
                 }
             }
+        }
+
+        // Manejando recordatorio
+        if (strcmp(array[0], "set") == 0) {
+            if (array[1] == NULL) {
+                printf("Error, se requieren más argumentos.\n");
+            } 
+            else if (strcmp(array[1], "recordatorio") == 0) {
+                if (array[2] != NULL) {
+                    char *str = array[2];
+                    int tiempo;
+                    int success = 0;
+                    for (int i = 0; str[i] != '\0'; i++) {
+                        if (!isdigit(str[i])) {
+                            printf("Error, se requiere caracter numérico.\n");
+                            success = 1;
+                            break;
+                        }
+                    }
+                    if (success == 0) {
+                        tiempo = atoi(array[2]);
+                        if (array[3] != NULL) {
+                            char str1[256]; 
+                            memset(mensaje, '\0', sizeof(mensaje));
+                            memset(str1, '\0', sizeof(str1));
+                            for (int j = 0; array[j + 3] != NULL; j++) {
+                                strcat(str1, array[j + 3]);
+                                if (array[j + 4] != NULL) {
+                                    strcat(str1, " ");
+                                }
+                            }
+                            if (str1[0] == '"' && str1[strlen(str1) - 1] == '"' && strlen(str1) > 2) {
+                                strncpy(mensaje, str1 + 1, strlen(str1) - 2);
+                                printf("Recordatorio '%s', para %d seg.\n", mensaje, tiempo);
+                                // Se crea un hijo para esperar la alarma, el padre continúa su respectivo proceso
+                                if ((fork()) == 0) {
+                                    signal(SIGALRM, sig_handler);
+                                    alarm(tiempo);
+                                    while (1) {
+                                        ;
+                                    }
+                                }
+                            } else {
+                                printf("Error, no se escribió correctamente el mensaje.\n");
+                                memset(mensaje, '\0', sizeof(mensaje));
+                            }
+                        } else {
+                            printf("Error, se requiere un 'mensaje'.\n");
+                        }
+                    }
+                } else {
+                    printf("Error, se requiere un número para el tiempo.\n");
+                }
+            } else {
+                printf("Error, argumento no reconocido.\n");
+            }
+            continue;
         }
 
         // Comando cd
@@ -360,6 +365,8 @@ int main(int argc, char **argv) {
             free(array);
             exit(0);
         }
+
+        char *fullCommandCopy = strdup(fullCommand);
 
         // Comandos con pipes
         if (strchr(fullCommand, '|')) {
@@ -405,26 +412,20 @@ int main(int argc, char **argv) {
         }
 
         if (command_executed){
-            char line[256];
-            char write = 1;
+            if (strstr(fullCommand, "favs") == NULL){
+                char line[256];
+                char write = 1;
 
-            FILE *fileTemp = fopen("misfavoritostemp.txt", "r");
-            while (fgets(line, sizeof(line), fileTemp)){ 
-                if(strcmp(line, fullCommand) == 0){
-                    write = 0;
+                FILE *fileTemp = fopen("misfavoritostemp.txt", "r");
+                while (fgets(line, sizeof(line), fileTemp)){ 
+                    if(strcmp(line, fullCommand) == 0){
+                        write = 0;
+                        break;
+                    }
                 }
-            }
-
-            fclose(fileTemp);
-
-            if (write && strcmp(array[0], "favs") != 0) {
-                // Escribir el comando en mis favoritos
-                FILE *fileTemp = fopen("misfavoritostemp.txt", "a");
-                fprintf(fileTemp, "%s", fullCommand);
                 fclose(fileTemp);
             }
         }
-
         free(array);
     }
     free(buffer);
