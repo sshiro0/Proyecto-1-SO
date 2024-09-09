@@ -9,6 +9,7 @@
 #include <linux/limits.h>
 #define clear() printf("\033[H\033[J")
 
+// Mostrar mensaje de bienvenida
 void welcome() {
     clear();
     printf("\n\n");
@@ -21,21 +22,86 @@ void welcome() {
     printf("\nUSER: @%s\n\n", username);
 }
 
-
+// Imprimir el directorio actual
 void printDirectory() {
-
     char cwd[PATH_MAX];
-
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
         printf("\033[1;32mPROJECTshell\033[0m:\033[1;34m~%s\033[0m$ ", cwd);
-    } 
-    else {
+    } else {
         perror("Error getting the current working directory.");
         exit(1);
     }
 }
 
-//Sujeto a ser cambiado a un string dinamico
+// Ejecucion de comandos con pipes
+void executePipes(char *commands[]) {
+    int i;
+    int n = 0;
+    int pipefds[2 * (1024 - 1)];
+    pid_t pid;
+    int fd_in = 0;
+
+    // Conteo de comandos
+    while (commands[n] != NULL) {
+        n++;
+    }
+
+    // Crear pipes
+    for (i = 0; i < n-1; i++) {
+        if (pipe(pipefds + i*2) == -1) {
+            exit(1);
+        }
+    }
+
+    // Creación de procesos hijos
+    for (i = 0; i < n; i++) {
+        if ((pid = fork()) == -1) {
+            perror("fork");
+            exit(1);
+        }
+
+        if (pid == 0) {
+            if (i > 0) {
+                dup2(pipefds[(i-1) * 2], 0); // Redirige entrada estándar
+            }
+            if (i < n - 1) {
+                dup2(pipefds[i*2 + 1], 1); // Redirige salida estándar
+            }
+
+            // Cierra descriptores de archivo en child process
+            for (int j = 0; j < 2*(n-1); j++) {
+                close(pipefds[j]);
+            }
+
+            // Prepara args para execvp
+            char *args[MAX_ARGS];
+            int j = 0;
+            char *token = strtok(commands[i], " \n");
+            while (token != NULL) {
+                args[j++] = token;
+                token = strtok(NULL, " \n");
+            }
+            args[j] = NULL;
+
+            // Ejecución
+            execvp(args[0], args);
+            perror("execvp");
+            exit(1);
+        }
+    }
+
+    // Cierra descriptores de archivo en proceso padre
+    for (i = 0; i < 2 * (n-1); i++) {
+        close(pipefds[i]);
+    }
+
+    // Wait a los hijos
+    for (i = 0; i < n; i++) {
+        wait(NULL);
+    }
+}
+
+// Sujeto a ser cambiado a un string dinámico
 char mensaje[256];
 void sig_handler(int sig) {
     printf("\n%s\n", mensaje);
@@ -44,47 +110,41 @@ void sig_handler(int sig) {
 }
 
 int main(int argc, char **argv) {
-    (void)argc, (void)argv;     // void para evitar problemas al compilar
-    char *buffer = NULL;        // puntero al string del usuario
-    size_t bufferSize = 0;      // size para asignar espacio en memoria de buffer
-    ssize_t bufferRead;         // ssize para almacenar cc de caracteres leidos             
-    pid_t c_pid;                // ID del hijo
-    int status;                 // status del hijo
-    char **array;               // puntero al array que almacena el comando y argumentos
-    char **array2;
-    char *fullCommand;
-    
+    (void)argc, (void)argv; // void para evitar problemas al compilar
+    char *buffer = NULL; // puntero al string del usuario
+    size_t bufferSize = 0; // size para asignar espacio en memoria de buffer
+    ssize_t bufferRead; // ssize para almacenar cc de caracteres leídos
+    pid_t c_pid; // ID del hijo
+    int status; // status del hijo
+    char **array; // puntero al array que almacena el comando y argumentos
+    char *fullCommand; // puntero que almacena el comando completo
+
     FILE *fileTemp = fopen("misfavoritostemp.txt", "a");
     fclose(fileTemp);
 
     FILE *file = fopen("misfavoritos.txt", "a");
     fclose(file);
 
-    welcome();
+    welcome(); // mensaje de bienvenida
 
     while (1) {
-        printDirectory();
+        printDirectory(); // imprime directorio actual
 
-        bufferRead = getline(&buffer, &bufferSize, stdin);// almacena bufferSize y lee buffer
-        fullCommand = strdup(buffer);
-        if (bufferRead == -1) {                                 
+        bufferRead = getline(&buffer, &bufferSize, stdin); // almacena bufferSize y lee buffer
+        fullCommand = strdup(buffer); // guarda copia del comando completo
+        if (bufferRead == -1) {
             perror("Error reading. Exiting shell.");
             free(buffer);
             free(fullCommand);
             exit(1);
         }
 
-        array = malloc(sizeof(char*) * 1024);           // asignación de memoria
-        if (array == NULL) {                               
+        // Asignación de memoria para los arrays de comandos y argumentos
+        array = malloc(sizeof(char*) * MAX_ARGS);
+        if (array == NULL) {
             perror("Malloc error. Exiting shell.");
             free(buffer);
-            exit(1);
-        }
-
-        array2 = malloc(sizeof(char*) * 1024);           // asignación de memoria
-        if (array2 == NULL) {                               
-            perror("Malloc error. Exiting shell.");
-            free(buffer);
+            free(fullCommand);
             exit(1);
         }
 
@@ -92,8 +152,8 @@ int main(int argc, char **argv) {
         int j = 0;
         int es_pipe = 0;
 
-        char *token = strtok(buffer, " \n");            // divide string buffer en tokens, usa " " como delimitador y \n
-        while (token) { 
+        char *token = strtok(buffer, " \n"); // Divide string buffer en tokens, usa " " como delimitador y \n
+        while (token) {
             if (strcmp(token, "|") == 0) {
                 array[i] = NULL;
                 es_pipe = 1;
@@ -102,122 +162,107 @@ int main(int argc, char **argv) {
             }
 
             if (es_pipe) {
-                array2[j++] = token;
+                array[j++] = token;
             } else {
                 array[i++] = token;
             }
             token = strtok(NULL, " \n");
         }
 
-        array[i] = NULL;   
-        array2[j] = NULL;   
+        array[i] = NULL; 
 
-        if (array[0] == NULL) {                         // caso no se ingresa nada, se pide algo
+        if (array[0] == NULL) { // Caso no se ingresa nada
             printf("Please, enter a command.\n");
             free(array);
-            free(array2);
             free(fullCommand);
             continue;
         }
 
-        //set recordatorio time "mensaje"
-        if(strcmp(array[0], "set") == 0){
-            if(array[1] == NULL){
-                printf("Error, se requieren mas argumentos.\n");
-            }
-            else if (strcmp(array[1], "recordatorio") == 0){
-                if(array[2] != NULL){
+        // Manejando comandos favoritos
+        if (strcmp(array[0], "set") == 0) {
+            if (array[1] == NULL) {
+                printf("Error, se requieren más argumentos.\n");
+            } else if (strcmp(array[1], "recordatorio") == 0) {
+                if (array[2] != NULL) {
                     char *str = array[2];
                     int tiempo;
                     int success = 0;
-                    for(int i = 0; str[i] != '\0'; i++){
-                        if(!isdigit(str[i])){
-                            printf("Error, se requiere caracter numerico.\n");
+                    for (int i = 0; str[i] != '\0'; i++) {
+                        if (!isdigit(str[i])) {
+                            printf("Error, se requiere caracter numérico.\n");
                             success = 1;
                             break;
                         }
                     }
-                    if(success == 0){
+                    if (success == 0) {
                         tiempo = atoi(array[2]);
-                        if(array[3] != NULL){
+                        if (array[3] != NULL) {
                             char str1[256]; 
                             memset(mensaje, '\0', sizeof(mensaje));
                             memset(str1, '\0', sizeof(str1));
-                            for(int j=0; array[j+3]!= NULL; j++){
-                                strcat(str1, array[j+3]);
-                                if(array[j+4] != NULL){
+                            for (int j = 0; array[j + 3] != NULL; j++) {
+                                strcat(str1, array[j + 3]);
+                                if (array[j + 4] != NULL) {
                                     strcat(str1, " ");
                                 }
                             }
-                            if(str1[0] == '"' && str1[strlen(str1)-1] == '"' && strlen(str1) > 2){
-                                strncpy(mensaje, str1+1, strlen(str1)-2);
+                            if (str1[0] == '"' && str1[strlen(str1) - 1] == '"' && strlen(str1) > 2) {
+                                strncpy(mensaje, str1 + 1, strlen(str1) - 2);
                                 printf("Recordatorio '%s', para %d seg.\n", mensaje, tiempo);
-                                //Se crea un hijo para la estar esperando la alarma, el padre continua su respectivo proceso
-                                if((fork())==0){
+                                // Se crea un hijo para esperar la alarma, el padre continúa su respectivo proceso
+                                if ((fork()) == 0) {
                                     signal(SIGALRM, sig_handler);
                                     alarm(tiempo);
-                                    while(1){
-                                    ;
+                                    while (1) {
+                                        ;
                                     }
                                 }
-                            }
-                            else {
-                                printf("Error, no se escribio correctamente el mensaje.\n");
+                            } else {
+                                printf("Error, no se escribió correctamente el mensaje.\n");
                                 memset(mensaje, '\0', sizeof(mensaje));
                             }
+                        } else {
+                            printf("Error, se requiere un 'mensaje'.\n");
                         }
-                        else{
-                            printf("Error se requiere un 'mensaje'.\n");
-                        }   
                     }
+                } else {
+                    printf("Error, se requiere un número para el tiempo.\n");
                 }
-                else {
-                    printf("Error, se requiere un numero para el tiempo.\n");
-                }
-            }
-            else{
+            } else {
                 printf("Error, argumento no reconocido.\n");
             }
             continue;
         }
 
-        if (strcmp(array[0], "favs") == 0){
-            // Mostrar los comandos favoritos
-            if (array[1] != NULL && strcmp(array[1], "mostrar") == 0){
+        // Comandos favs
+        if (strcmp(array[0], "favs") == 0) {
+            if (array[1] != NULL && strcmp(array[1], "mostrar") == 0) {
                 FILE *file = fopen("misfavoritostemp.txt", "r");
-
                 char line[256]; 
-                
                 int counter = 1;
-                while (fgets(line, sizeof(line), file)){ 
-                    printf("%d) %s",counter ,line);
+                while (fgets(line, sizeof(line), file)) { 
+                    printf("%d) %s", counter, line);
                     counter++;
                 }
-
                 fclose(file);
                 continue;
-            }
-
-            else if (array[1] != NULL && strcmp(array[1], "buscar") == 0){
-                if (array[2] == NULL)
+            } else if (array[1] != NULL && strcmp(array[1], "buscar") == 0) {
+                if (array[2] == NULL) {
                     perror("Error cmd null");
-
-                else{
+                } else {
                     char line[256];
                     int counter = 1;
-                    FILE *file= fopen("misfavoritos.txt", "r");
-                    while (fgets(line, sizeof(line), file)){ 
-                        if (strstr(line, array[2]) != NULL){
-                            printf("%d) %s",counter ,line);
+                    FILE *file = fopen("misfavoritos.txt", "r");
+                    while (fgets(line, sizeof(line), file)) { 
+                        if (strstr(line, array[2]) != NULL) {
+                            printf("%d) %s", counter, line);
                         }
                         counter++;
                     }
                     fclose(file);
                     continue;
                 }
-            }
-
-            else if (array[1] != NULL && strcmp(array[1], "guardar") == 0){
+            } else if (array[1] != NULL && strcmp(array[1], "guardar") == 0) {
                 FILE *file = fopen("misfavoritos.txt", "a+");
                 FILE *fileTemp = fopen("misfavoritostemp.txt", "r");
                 char line[256];
@@ -225,81 +270,58 @@ int main(int argc, char **argv) {
                 int write = 1;
                 int counter = 0;
 
-                while (fgets(line, sizeof(line), fileTemp)){
-                    while(fgets(line2, sizeof(line2), file)){
-                        if (strcmp(line2, line) == 0){
+                while (fgets(line, sizeof(line), fileTemp)) {
+                    rewind(file);
+                    while (fgets(line2, sizeof(line2), file)) {
+                        if (strcmp(line2, line) == 0) {
                             write = 0;
-                            
                         }
-                        
                     }
-
-                    fclose(file);
-                    FILE *file = fopen("misfavoritos.txt", "a+");
-                    
-                    if (write == 1)
+                    if (write == 1) {
                         fprintf(file, "%s", line);
-                    
-    
-            
+                    }
                     write = 1;
                     counter++;
                 }
                 fclose(file);
                 fclose(fileTemp);
-
                 continue;
-            }
-
-            if (array[1] != NULL && strcmp(array[1], "cargar") == 0){
+            } else if (array[1] != NULL && strcmp(array[1], "cargar") == 0) {
                 FILE *file = fopen("misfavoritos.txt", "r");
-
                 char line[256]; 
-                
                 int counter = 1;
-                while (fgets(line, sizeof(line), file)){ 
-                    printf("%d) %s",counter ,line);
+                while (fgets(line, sizeof(line), file)) { 
+                    printf("%d) %s", counter, line);
                     counter++;
                 } 
-
                 fclose(file);
                 continue;
-            }
-
-            else if (array[1] != NULL && strcmp(array[1], "borrar") == 0){
+            } else if (array[1] != NULL && strcmp(array[1], "borrar") == 0) {
                 FILE *file = fopen("misfavoritos.txt", "w");
                 fclose(file);
                 continue;
-            }
-
-            else if (array[1] != NULL && strcmp(array[1], "ejecutar") == 0){
-                if (array[2] == NULL)
+            } else if (array[1] != NULL && strcmp(array[1], "ejecutar") == 0) {
+                if (array[2] == NULL) {
                     perror("Error, third argument needed");
- 
-                else{
-                    char** arrayExec;
+                } else {
+                    char **arrayExec;
                     char line[256];
-                    arrayExec = malloc(sizeof(char*) * 1024);   
+                    arrayExec = malloc(sizeof(char*) * MAX_ARGS);   
                     int i = 0;
                     int counter = 1;
 
-                    FILE* file = fopen("misfavoritos.txt", "r");
+                    FILE *file = fopen("misfavoritos.txt", "r");
 
-                    while(fgets(line, sizeof(line), file)){
-                        if (atoi(array[2]) == counter){
-                            
+                    while (fgets(line, sizeof(line), file)) {
+                        if (atoi(array[2]) == counter) {
                             char *token = strtok(line, " \n");  
-                              
                             while (token) { 
                                 arrayExec[i++] = token;
                                 token = strtok(NULL, " \n");
                             }
-
                             arrayExec[i] = NULL; 
-                            
                             free(array);
                             array = arrayExec;
-
                             break;
                         }
                         counter++;
@@ -308,70 +330,48 @@ int main(int argc, char **argv) {
                 }
             }
         }
-        
+
+        // Comando cd
         if (strcmp(array[0], "cd") == 0) {
             if (array[1] == NULL || strcmp(array[1], "~") == 0) {
                 const char *home = getenv("HOME");
                 if (home == NULL) {
                     fprintf(stderr, "Error: HOME not found.\n");
-                }
-                else {
+                } else {
                     if (chdir(home) != 0) {
                         perror("Error in cd command.");
                     }
                 }
-            }
-            else {
+            } else {
                 if (chdir(array[1]) != 0) {
                     perror("Error in cd command");
                 }
             }
             free(array);
-            free(array2);
             continue; // Skip fork() si el comando es cd
         }
 
+        // Comando exit
         if (strcmp(array[0], "exit") == 0) {
-            FILE* fileTemp = fopen("misfavoritostemp.txt", "w"); 
+            FILE *fileTemp = fopen("misfavoritostemp.txt", "w"); 
             fclose(fileTemp);
-
             free(array);
-            free(array2);
-
             exit(0);
         }
 
-        if (es_pipe) {
-            int p[2];
-            pipe(p);
+        // Comandos con pipes
+        if (strchr(fullCommand, '|')) {
+            // Dividir comandos por el pipe
+            char *commands[1024];
+            int command_count = 0;
 
-            pid_t pid1 = fork();
-            if (pid1 == 0) {
-                // Hijo 1 (ejecuta el primer comando)
-                close(p[0]); // cierra lectura
-                dup2(p[1], STDOUT_FILENO); // redirige stdout
-                close(p[1]);
-                execvp(array[0], array);
-                perror("Failed to execute first command");
-                exit(1);
-            } else {
-                pid_t pid2 = fork();
-                if (pid2 == 0) {
-                    // Hijo 2 (ejecuta el segundo comando)
-                    close(p[1]); // cierra escritura
-                    dup2(p[0], STDIN_FILENO); // redirige stdin
-                    close(p[0]);
-                    execvp(array2[0], array2);
-                    perror("Failed to execute second command");
-                    exit(1);
-                } else {
-                    // Proceso padre
-                    close(p[0]);
-                    close(p[1]);
-                    waitpid(pid1, &status, 0);
-                    waitpid(pid2, &status, 0);
-                }
+            char *cmd = strtok(fullCommand, "|");
+            while (cmd != NULL) {
+                commands[command_count++] = cmd;
+                cmd = strtok(NULL, "|");
             }
+            commands[command_count] = NULL;
+            executePipes(commands);
         }
         else {
             // Proceso sin pipes
@@ -379,35 +379,28 @@ int main(int argc, char **argv) {
             if (c_pid == -1) {
                 perror("Failed to create the child.");
                 free(array);
-                free(array2);
                 exit(1);
             }
-            
-
             if (c_pid == 0) {
                 if (execvp(array[0], array) == -1) {
                     perror("Failed to execute");
                     free(array);
-                    free(array2);
                     exit(1);
                 }
             } else {
                 waitpid(c_pid, &status, 0);
 
-                // chequear que el comando no haya sido escrito antes
-
-                if (WIFEXITED(status)){
+                if (WIFEXITED(status)) {
                     int exit_status = WEXITSTATUS(status);
                     char line[256];
                     char write = 1;
 
                     FILE *fileTemp = fopen("misfavoritostemp.txt", "r");
-                    while (fgets(line, sizeof(line), fileTemp)){ 
-                        if(strcmp(line, fullCommand) == 0){
+                    while (fgets(line, sizeof(line), fileTemp)) { 
+                        if (strcmp(line, fullCommand) == 0) {
                             write = 0;
                         }
                     }
-
                     fclose(fileTemp);
 
                     if (write && strcmp(array[0], "favs") != 0) {
@@ -416,14 +409,11 @@ int main(int argc, char **argv) {
                         fprintf(fileTemp, "%s", fullCommand);
                         fclose(fileTemp);
                     }
-
-                }    
-
+                }
             }
         }
-        
+
         free(array);
-        free(array2);
     }
     free(buffer);
     return 0;
