@@ -73,8 +73,6 @@ int main(int argc, char **argv) {
             free(fullCommand);
             exit(1);
         }
-        
-
 
         array = malloc(sizeof(char*) * 1024);           // asignación de memoria
         if (array == NULL) {                               
@@ -139,7 +137,6 @@ int main(int argc, char **argv) {
                             break;
                         }
                     }
-
                     if(success == 0){
                         tiempo = atoi(array[2]);
                         if(array[3] != NULL){
@@ -152,7 +149,6 @@ int main(int argc, char **argv) {
                                     strcat(str1, " ");
                                 }
                             }
-
                             if(str1[0] == '"' && str1[strlen(str1)-1] == '"' && strlen(str1) > 2){
                                 strncpy(mensaje, str1+1, strlen(str1)-2);
                                 printf("Recordatorio '%s', para %d seg.\n", mensaje, tiempo);
@@ -165,19 +161,16 @@ int main(int argc, char **argv) {
                                     }
                                 }
                             }
-
                             else {
                                 printf("Error, no se escribio correctamente el mensaje.\n");
                                 memset(mensaje, '\0', sizeof(mensaje));
                             }
                         }
-
                         else{
                             printf("Error se requiere un 'mensaje'.\n");
                         }   
                     }
                 }
-
                 else {
                     printf("Error, se requiere un numero para el tiempo.\n");
                 }
@@ -405,7 +398,7 @@ int main(int argc, char **argv) {
                 free(array2);
                 exit(1);
             }
-            c_pid = fork();
+            
             if (c_pid == 0) {
                 if (execvp(array[0], array) == -1) {
                     perror("Failed to execute");
