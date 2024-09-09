@@ -74,7 +74,7 @@ void executePipes(char *commands[]) {
             }
 
             // Prepara args para execvp
-            char *args[MAX_ARGS];
+            char *args[1024];
             int j = 0;
             char *token = strtok(commands[i], " \n");
             while (token != NULL) {
@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
         }
 
         // Asignación de memoria para los arrays de comandos y argumentos
-        array = malloc(sizeof(char*) * MAX_ARGS);
+        array = malloc(sizeof(char*) * 1024);
         if (array == NULL) {
             perror("Malloc error. Exiting shell.");
             free(buffer);
@@ -306,7 +306,7 @@ int main(int argc, char **argv) {
                 } else {
                     char **arrayExec;
                     char line[256];
-                    arrayExec = malloc(sizeof(char*) * MAX_ARGS);   
+                    arrayExec = malloc(sizeof(char*) * 1024);   
                     int i = 0;
                     int counter = 1;
 
