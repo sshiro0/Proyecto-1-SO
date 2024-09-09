@@ -263,10 +263,19 @@ int main(int argc, char **argv) {
 
                     while (fgets(line, sizeof(line), file)) {
                         if (atoi(array[2]) == counter) {
-                            char *token = strtok(line, " \n");  
+                            fullCommand = NULL;
+                            fullCommand = malloc(1024 * sizeof(char));
+                            fullCommand[0] = '\0';
+                            char *token = strtok(line, " \n");
                             while (token) { 
                                 arrayExec[i++] = token;
+                                strcat(fullCommand, token);
+                                strcat(fullCommand, " ");
                                 token = strtok(NULL, " \n");
+                            }
+                            size_t len = strlen(fullCommand);
+                            if (len > 0 && fullCommand[len - 1] == ' ') {
+                                fullCommand[len - 1] = '\0';
                             }
                             arrayExec[i] = NULL; 
                             free(array);
@@ -274,7 +283,6 @@ int main(int argc, char **argv) {
                             break;
                         }
                         counter++;
-                        
                     }
                     fclose(file);
                 }
