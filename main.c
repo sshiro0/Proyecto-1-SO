@@ -130,6 +130,8 @@ int main(int argc, char **argv) {
     while (1) {
         printDirectory(); // imprime directorio actual
 
+        int command_executed = 0; // variable auxiliar para verificar que un comando ha sido ejecutado con exito
+
         bufferRead = getline(&buffer, &bufferSize, stdin); // almacena bufferSize y lee buffer
         fullCommand = strdup(buffer); // guarda copia del comando completo
         if (bufferRead == -1) {
@@ -372,7 +374,9 @@ int main(int argc, char **argv) {
             }
             commands[command_count] = NULL;
             executePipes(commands);
+            command_executed = 1;
         }
+
         else {
             // Proceso sin pipes
             c_pid = fork();
@@ -387,29 +391,37 @@ int main(int argc, char **argv) {
                     free(array);
                     exit(1);
                 }
-            } else {
+            }
+            else {
                 waitpid(c_pid, &status, 0);
 
                 if (WIFEXITED(status)) {
                     int exit_status = WEXITSTATUS(status);
-                    char line[256];
-                    char write = 1;
-
-                    FILE *fileTemp = fopen("misfavoritostemp.txt", "r");
-                    while (fgets(line, sizeof(line), fileTemp)) { 
-                        if (strcmp(line, fullCommand) == 0) {
-                            write = 0;
-                        }
-                    }
-                    fclose(fileTemp);
-
-                    if (write && strcmp(array[0], "favs") != 0) {
-                        // Escribir el comando en mis favoritos
-                        FILE *fileTemp = fopen("misfavoritostemp.txt", "a");
-                        fprintf(fileTemp, "%s", fullCommand);
-                        fclose(fileTemp);
+                    if (exit_status == 0) {
+                        command_executed = 1;
                     }
                 }
+            }
+        }
+
+        if (command_executed){
+            char line[256];
+            char write = 1;
+
+            FILE *fileTemp = fopen("misfavoritostemp.txt", "r");
+            while (fgets(line, sizeof(line), fileTemp)){ 
+                if(strcmp(line, fullCommand) == 0){
+                    write = 0;
+                }
+            }
+
+            fclose(fileTemp);
+
+            if (write && strcmp(array[0], "favs") != 0) {
+                // Escribir el comando en mis favoritos
+                FILE *fileTemp = fopen("misfavoritostemp.txt", "a");
+                fprintf(fileTemp, "%s", fullCommand);
+                fclose(fileTemp);
             }
         }
 
